@@ -10,7 +10,7 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
-
+import clients
 
 def add_path(path):
     if path not in sys.path:
@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(description='PyTorch BARRE Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--resume', '--r', default=-1, type=int)
 parser.add_argument('--resume_iter', '--ri', default=-1, type=int)
-parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')
+parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')#这个应该是作为参数传进来
 parser.add_argument('--total_epochs', "--te", type=int, default=100)
 parser.add_argument("--model", type=str, default="res18", choices=["res18", "res20", "mbv1"])
 parser.add_argument("--optimizer", "--opt", type=str, default="sgd", choices=["sgd", "adam"])
@@ -75,7 +75,7 @@ def add_normal_noise(inputs, delta_range_c = 5):  # add_P
     noisy_inputs = np.clip(inputs + noise, 0, 255)
     return noisy_inputs
 
-def train(epoch):
+def train(epoch, model_ls, lr_scheduler, optimizer):
     train_loss = 0.
     train_adv_loss = 0.
     train_other_adv_loss = 0.
@@ -118,7 +118,7 @@ def train(epoch):
 
 
 
-def osp_iter(epoch):
+def osp_iter(epoch, model_ls, prob, osp_lr_init):
 
     M = len(prob)
     err = np.zeros(M)
@@ -143,7 +143,7 @@ def osp_iter(epoch):
     grad = err/n
     return grad
 
-def test():
+def test(model_ls, prob):
     for net in model_ls:
         net.eval()
 
@@ -177,12 +177,29 @@ def test():
     advacc = 100. * adv_correct / total
     return acc, advacc
 
+def weighted_average_model(model_ls, prob):
+    # 初始化一个空白模型，该模型结构与模型列表中的模型相同
+    final_model = get_architecture(args)  # 创建一个新模型
+    final_model = nn.DataParallel(final_model).cuda()
 
+    # 初始化最终模型的参数为零
+    for param in final_model.parameters():
+        param.data.zero_()
+
+    # 遍历每个模型，按照采样概率 prob 对其参数进行加权
+    for i, model in enumerate(model_ls):
+        model_params = model.state_dict()  # 获取模型的参数
+        for key in model_params:
+            # 按照概率 prob 加权累加到 final_model 的参数中
+            final_model.state_dict()[key].data += model_params[key].data * prob[i]
+
+    # 返回最终模型的参数
+    return final_model.state_dict()
 
 criterion = nn.CrossEntropyLoss()
 
 
-if __name__ == "__main__":
+def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters):
     model_ls = []
     print_ls = []
     for iteration in range(args.M):
@@ -243,7 +260,7 @@ if __name__ == "__main__":
             print('==> Begin training for iteration {:d} ..'.format(iteration))
             for epoch in range(start_epoch + 1, args.total_epochs):
 
-                train(epoch)
+                train(epoch,model_ls, prob,lr_scheduler,optimizer)
                 if args.optimizer == "sgd":
                     lr_scheduler.step()
                 if epoch >= args.total_epochs//2:
@@ -253,7 +270,7 @@ if __name__ == "__main__":
                         print('==> Begin OSP routine, starting alpha=' + arr_to_str(prob))
                         for t in range(args.osp_epochs):
                             osp_lr = osp_lr_init/(t+1)
-                            g_t = osp_iter(t) #sub-gradient of eta(alpha_t)
+                            g_t = osp_iter(t,model_ls, prob,osp_lr_init) #sub-gradient of eta(alpha_t)
                             eta_t = sum(g_t*prob) #eta(alpha_t)
                             if eta_t <= eta_best:
                                 t_best = t
@@ -265,7 +282,7 @@ if __name__ == "__main__":
                         prob = np.copy(prob_best)
 
                 if (epoch + 1) % args.val_interval == 0 or epoch >= start_epoch + args.total_epochs - 10:
-                    acc, advacc = test()
+                    acc, advacc = test(model_ls, prob)
                     if advacc > best_advacc:
                         best_advacc = advacc
                         best_correspond_acc = acc
@@ -306,3 +323,6 @@ if __name__ == "__main__":
             model_ls[-1].module.load_state_dict(checkpoint['net'])
     for s in print_ls:
         print(s)
+    
+    return weighted_average_model(model_ls, prob)
+    

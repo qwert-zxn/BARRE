@@ -113,7 +113,6 @@ def test(model_ls, prob, testloader, epsilon, step_size, attack_iters, num_class
     correct = 0
     adv_correct = 0
     total = 0
-    return correct, adv_correct
     pbar = tqdm(testloader)
     pbar.set_description('Evaluating')
     for batch_idx, (inputs, targets) in enumerate(pbar):
