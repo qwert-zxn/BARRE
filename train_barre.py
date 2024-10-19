@@ -70,10 +70,9 @@ trainloader, testloader, osploader = get_loaders(args)
 normalize = get_normalize(args)
 num_classes = get_num_classes(args)
 
-def add_normal_noise(inputs, noise_level=0.05):  # add_P
-    noise = noise_level * torch.randn(inputs.size()).cuda()
-    noisy_inputs = inputs + noise
-    noisy_inputs = torch.clamp(noisy_inputs, 0., 1.)  # 确保值在[0, 1]范围内
+def add_normal_noise(inputs, delta_range_c = 5):  # add_P
+    noise = np.random.uniform(delta_range_c, 2 * delta_range_c, inputs.shape)
+    noisy_inputs = np.clip(inputs + noise, 0, 255)
     return noisy_inputs
 
 def train(epoch):
