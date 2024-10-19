@@ -19,7 +19,7 @@ def add_path(path):
 
 add_path("../lib")
 from architectures import get_architecture
-from attack import arc_attack, apgd_attack
+# from attack import arc_attack, apgd_attack
 from utils import seed_torch, arr_to_str, proj_onto_simplex
 from datasets import get_loaders, get_normalize, get_num_classes
 
@@ -70,7 +70,11 @@ trainloader, testloader, osploader = get_loaders(args)
 normalize = get_normalize(args)
 num_classes = get_num_classes(args)
 
-
+def add_normal_noise(inputs, noise_level=0.05):  # add_P
+    noise = noise_level * torch.randn(inputs.size()).cuda()
+    noisy_inputs = inputs + noise
+    noisy_inputs = torch.clamp(noisy_inputs, 0., 1.)  # 确保值在[0, 1]范围内
+    return noisy_inputs
 
 def train(epoch):
     train_loss = 0.
@@ -84,7 +88,8 @@ def train(epoch):
     pbar.set_description("Train:{:3d} epoch lr {:.1e}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
-        adv_inp = apgd_attack(model_ls, inputs, targets, prob, 8 / 255.0, 2 / 255.0, 10, other_weight=args.other_weight, num_classes=num_classes, normalize=normalize)
+        #adv_inp = apgd_attack(model_ls, inputs, targets, prob, 8 / 255.0, 2 / 255.0, 10, other_weight=args.other_weight, num_classes=num_classes, normalize=normalize)
+        adv_inp = add_normal_noise(inputs)
         optimizer.zero_grad()
         model_ls[-1].train()
         pred = model_ls[-1](normalize(adv_inp))
@@ -120,13 +125,14 @@ def osp_iter(epoch):
     err = np.zeros(M)
     n = 0
     pbar = tqdm(osploader)
-    osp_lr_init = args.osp_lr_max*lr_scheduler.get_lr()[0]
-    curr_lr = osp_lr_init/(1+epoch)
+    curr_lr = osp_lr_init/(1+epoch)#可能要删
     model_ls[-1].eval()
     pbar.set_description("OSP:{:3d} epoch lr {:.4f}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
-        adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=2)
+        #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=2)
+        adv_inp = add_normal_noise(inputs)
+        pred = model_ls[-1](normalize(adv_inp))
         for m in range(M):
             t_m = model_ls[m](normalize(adv_inp))
             err[m]+= (t_m.max(1)[1] != targets).sum().item()
@@ -149,13 +155,14 @@ def test():
     pbar.set_description('Evaluating')
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
+        adv_inp = add_normal_noise(inputs)# 加扰动后的输入
         with torch.no_grad():
             for i, net in enumerate(model_ls):
                 outputs = net(normalize(inputs))
                 _, predicted = outputs.max(1)
                 correct += predicted.eq(targets).sum().item()*prob[i]
         total += targets.size(0)
-        adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=1)
+        #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=1)
         with torch.no_grad():
             for i, net in enumerate(model_ls):
                 adv_outputs = net(normalize(adv_inp))
