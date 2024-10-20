@@ -58,26 +58,14 @@ def get_loaders(args, trainDataSet):#改成如果dataset直接是trainDataSet，
     #     subset = list(range(0, args.osp_data_len))
     #     ospset = torch.utils.data.Subset(ospset, subset)
     
-    # 设置训练集和测试集的比例
-    train_size = int(0.8 * len(trainDataSet))  # 80% 作为训练集
-    test_size = len(trainDataSet) - train_size  # 剩余 20% 作为测试集
-    # 随机分割数据集
-    trainset, testset = random_split(trainDataSet, [train_size, test_size])
-    osp_size = args.osp_data_len  # 定义 OSP 数据集的大小
+    
     subset = list(range(0, args.osp_data_len))
-    ospset = torch.utils.data.Subset(trainset, subset)
+    ospset = torch.utils.data.Subset(trainDataSet, subset)
 
     train_loader = torch.utils.data.DataLoader(
-        dataset=trainset,
+        dataset=trainDataSet,
         batch_size=args.batch_size,
         shuffle=True,
-        pin_memory=True,
-        num_workers=args.num_workers,
-    )
-    test_loader = torch.utils.data.DataLoader(
-        dataset=testset,
-        batch_size=args.batch_size,
-        shuffle=False,
         pin_memory=True,
         num_workers=args.num_workers,
     )
@@ -89,4 +77,4 @@ def get_loaders(args, trainDataSet):#改成如果dataset直接是trainDataSet，
         pin_memory=True,
         num_workers=args.num_workers,
     )
-    return train_loader, test_loader, osp_loader
+    return train_loader, osp_loader

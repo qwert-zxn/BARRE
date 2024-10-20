@@ -11,13 +11,6 @@ import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
 import clients
-
-def add_path(path):
-    if path not in sys.path:
-        print('Adding {}'.format(path))
-        sys.path.append(path)
-
-add_path("../lib")
 from architectures import get_architecture
 # from attack import arc_attack, apgd_attack
 from utils import seed_torch, arr_to_str, proj_onto_simplex
@@ -52,34 +45,20 @@ parser.add_argument('--osp_freq', "--of", type=int, default=10)
 parser.add_argument('--osp_lr_max', "--olr", type=float, default=10)
 parser.add_argument('--osp_batch_size', "--obm", type=int, default=512) #batch size used for osp
 parser.add_argument('--osp_data_len', type=int, default=2048) #subset of trainset used for osp
-args = parser.parse_args()
 
-
-print("Args:", args)
-
-
-
-outdir = args.outdir
-if not os.path.exists(outdir):
-    os.makedirs(outdir)
-
-seed_torch(args.seed)
-print('==> Preparing data..')
-
-trainloader, testloader, osploader = get_loaders(args,client.train_ds)
-normalize = get_normalize(args)
-num_classes = get_num_classes(args)
-
+def add_path(path):
+    if path not in sys.path:
+        print('Adding {}'.format(path))
+        sys.path.append(path)
+        
 def add_normal_noise(inputs, delta_range_c = 5):  # add_P
     noise = np.random.uniform(delta_range_c, 2 * delta_range_c, inputs.shape)
     noisy_inputs = np.clip(inputs + noise, 0, 255)
     return noisy_inputs
 
-def train(epoch, model_ls, lr_scheduler, optimizer):
-    train_loss = 0.
+def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,normalize):
     train_adv_loss = 0.
     train_other_adv_loss = 0.
-    correct = 0
     adv_correct = 0
     total = 0
     pbar = tqdm(trainloader)
@@ -117,8 +96,7 @@ def train(epoch, model_ls, lr_scheduler, optimizer):
         pbar.set_postfix(pbar_dic)
 
 
-
-def osp_iter(epoch, model_ls, prob, osp_lr_init):
+def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader,normalize):
 
     M = len(prob)
     err = np.zeros(M)
@@ -131,7 +109,6 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init):
         inputs, targets = inputs.cuda(), targets.cuda()
         #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=2)
         adv_inp = add_normal_noise(inputs)
-        pred = model_ls[-1](normalize(adv_inp))
         for m in range(M):
             t_m = model_ls[m](normalize(adv_inp))
             err[m]+= (t_m.max(1)[1] != targets).sum().item()
@@ -142,40 +119,6 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init):
         pbar.set_postfix(pbar_dic)
     grad = err/n
     return grad
-
-def test(model_ls, prob):
-    for net in model_ls:
-        net.eval()
-
-    correct = 0
-    adv_correct = 0
-    total = 0
-    pbar = tqdm(testloader)
-    pbar.set_description('Evaluating')
-    for batch_idx, (inputs, targets) in enumerate(pbar):
-        inputs, targets = inputs.cuda(), targets.cuda()
-        adv_inp = add_normal_noise(inputs)# 加扰动后的输入
-        with torch.no_grad():
-            for i, net in enumerate(model_ls):
-                outputs = net(normalize(inputs))
-                _, predicted = outputs.max(1)
-                correct += predicted.eq(targets).sum().item()*prob[i]
-        total += targets.size(0)
-        #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=1)
-        with torch.no_grad():
-            for i, net in enumerate(model_ls):
-                adv_outputs = net(normalize(adv_inp))
-                _, adv_predicted = adv_outputs.max(1)
-                adv_correct += adv_predicted.eq(targets).sum().item()*prob[i]
-
-        pbar_dic = OrderedDict()
-        pbar_dic['Acc'] = '{:2.2f}'.format(100. * correct / total)
-        pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * adv_correct / total)
-        pbar.set_postfix(pbar_dic)
-
-    acc = 100. * correct / total
-    advacc = 100. * adv_correct / total
-    return acc, advacc
 
 def weighted_average_model(model_ls, prob):
     # 初始化一个空白模型，该模型结构与模型列表中的模型相同
@@ -200,8 +143,20 @@ criterion = nn.CrossEntropyLoss()
 
 
 def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters):
+    
+    args = parser.parse_args()
+    #print("Args:", args)
+    outdir = args.outdir
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    seed_torch(args.seed)
+    trainloader, osploader = get_loaders(args,client.train_ds)
+    normalize = get_normalize(args)
+    num_classes = get_num_classes(args)
+
+    add_path("../lib")
+
     model_ls = []
-    print_ls = []
     for iteration in range(args.M):
         print('==> Building model {}/{}'.format(iteration+1,args.M))
         model = get_architecture(args)
@@ -214,25 +169,10 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
             model_ls[-1].load_state_dict(model_ls[-2].state_dict())
 
         if iteration <= args.resume_iter:
-            iter_save_path = os.path.join(outdir, "iter{:d}".format(iteration))
-            ckpt_path = os.path.join(iter_save_path, 'model_best.pth')
-            checkpoint = torch.load(ckpt_path)
-
-            print('==> Resuming from checkpoint model_best.pth')
-            if list(checkpoint['net'].keys())[0].startswith('module.'):
-                model_ls[-1].load_state_dict(checkpoint['net'])
-            else:
-                model_ls[-1].module.load_state_dict(checkpoint['net'])
-            best_advacc = checkpoint['best_advacc']
-            best_correspond_acc = checkpoint["best_correspond_acc"]
-            best_epoch = checkpoint["best_epoch"]
-            advacc, acc = checkpoint['advacc'], checkpoint["acc"]
+            print('需要恢复模型状态')
 
         else:
-            best_advacc = -1.  # best test accuracy
-            best_correspond_acc = -1  # corresponding clean accuracy
             start_epoch = -1  # start from epoch 0 or last checkpoint epoch
-            best_epoch = -1
 
             if args.optimizer == "sgd":
                 optimizer = optim.SGD(model_ls[-1].parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
@@ -252,16 +192,12 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
                 optimizer.load_state_dict(checkpoint['optimizer'])
                 if args.optimizer == "sgd":
                     lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
-                best_advacc = checkpoint['best_advacc']
-                best_correspond_acc = checkpoint["best_correspond_acc"]
-                best_epoch = checkpoint["best_epoch"]
-                advacc, acc = checkpoint['advacc'], checkpoint["acc"]  
                 start_epoch = args.resume
 
             print('==> Begin training for iteration {:d} ..'.format(iteration))
             for epoch in range(start_epoch + 1, args.total_epochs):
 
-                train(epoch,model_ls, prob,lr_scheduler,optimizer)
+                train(epoch,model_ls, prob,lr_scheduler,optimizer,trainloader,normalize)
                 if args.optimizer == "sgd":
                     lr_scheduler.step()
                 if epoch >= args.total_epochs//2:
@@ -271,7 +207,7 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
                         print('==> Begin OSP routine, starting alpha=' + arr_to_str(prob))
                         for t in range(args.osp_epochs):
                             osp_lr = osp_lr_init/(t+1)
-                            g_t = osp_iter(t,model_ls, prob,osp_lr_init) #sub-gradient of eta(alpha_t)
+                            g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader,normalize) #sub-gradient of eta(alpha_t)
                             eta_t = sum(g_t*prob) #eta(alpha_t)
                             if eta_t <= eta_best:
                                 t_best = t
@@ -281,49 +217,6 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
                             prob = proj_onto_simplex(prob - osp_lr * g_t)
                         print('==> End OSP routine, final alpha=' + arr_to_str(prob_best))
                         prob = np.copy(prob_best)
-
-                if (epoch + 1) % args.val_interval == 0 or epoch >= start_epoch + args.total_epochs - 10:
-                    acc, advacc = test(model_ls, prob)
-                    if advacc > best_advacc:
-                        best_advacc = advacc
-                        best_correspond_acc = acc
-                        best_epoch = epoch
-                        state = {'net': model_ls[-1].state_dict(),
-                                 'alpha': prob,
-                                 'optimizer': optimizer.state_dict(),
-                                 'best_correspond_acc': best_correspond_acc,
-                                 "best_advacc": best_advacc,
-                                 'best_epoch': best_epoch,
-                                 "advacc": advacc, "acc": acc,
-                                 }
-                        if args.optimizer == "sgd":
-                            state["lr_scheduler"] = lr_scheduler.state_dict()
-                        torch.save(state, os.path.join(iter_save_path, "model_best.pth"))
-
-                    state = {'net': model_ls[-1].state_dict(),
-                             'alpha': prob,
-                             'optimizer': optimizer.state_dict(),
-                             'best_correspond_acc': best_correspond_acc,
-                             "best_advacc": best_advacc,
-                             'best_epoch': best_epoch,
-                             "advacc": advacc, "acc": acc,
-                             }
-                    if args.optimizer == "sgd":
-                        state["lr_scheduler"] = lr_scheduler.state_dict()
-                    torch.save(state, os.path.join(iter_save_path, "epoch{:}.pth".format(epoch)))
-
-        print_str = "Iteration {:d}: Best advacc: {:.2f} at {:} epoch, cleanacc: {:.2f}; Last epoch cleanacc: {:.2f} advacc: {:.2f}".format(
-            iteration, best_advacc, best_epoch, best_correspond_acc, acc, advacc)
-        print(print_str)
-        print_ls.append(print_str)
-        print('Reloading best model of iteration {:d} at {:} epoch'.format(iteration,best_epoch ))
-        checkpoint = torch.load(os.path.join(iter_save_path, "model_best.pth"))
-        if list(checkpoint['net'].keys())[0].startswith('module.'):
-            model_ls[-1].load_state_dict(checkpoint['net'])
-        else:
-            model_ls[-1].module.load_state_dict(checkpoint['net'])
-    for s in print_ls:
-        print(s)
     
     return weighted_average_model(model_ls, prob)
     
