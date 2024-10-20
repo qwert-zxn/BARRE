@@ -66,7 +66,7 @@ if not os.path.exists(outdir):
 seed_torch(args.seed)
 print('==> Preparing data..')
 
-trainloader, testloader, osploader = get_loaders(args)
+trainloader, testloader, osploader = get_loaders(args,client.train_ds)
 normalize = get_normalize(args)
 num_classes = get_num_classes(args)
 

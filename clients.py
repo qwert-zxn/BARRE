@@ -84,7 +84,7 @@ class ClientsGroup(object):
         test_data = torch.tensor(mnistDataSet.test_data)
         test_label = torch.argmax(torch.tensor(mnistDataSet.test_label), dim=1)
         # 加载测试数据
-        self.test_data_loader = DataLoader(TensorDataset( test_data, test_label), batch_size=100, shuffle=False)
+        self.test_data_loader = DataLoader(TensorDataset( test_data, test_label), batch_size=100, shuffle=False)#这是测试数据loader
 
         train_data = mnistDataSet.train_data
         train_label = mnistDataSet.train_label

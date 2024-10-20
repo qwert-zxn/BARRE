@@ -6,10 +6,8 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
-
 import os
-
-
+from torch.utils.data import DataLoader, random_split
 
 CIFAR100_MEAN = (0.5070751592371323, 0.48654887331495095, 0.4409178433670343)
 CIFAR100_STD = (0.2673342858792401, 0.2564384629170883, 0.27615047132568404)
@@ -45,40 +43,30 @@ def get_normalize(args):
         normalize = lambda X: X
     return normalize
 
-def get_loaders(args):
-    if args.dataset == 'cifar100':
+def get_loaders(args, trainDataSet):#改成如果dataset直接是trainDataSet，怎么办
+    #trainDataSet的定义是trainDataSet=TensorDataset(torch.tensor(local_data), torch.tensor(local_label))，应该只有数据和标签
+    # if args.dataset == 'cifar10':
+    #     transform_train = transforms.Compose([
+    #         transforms.RandomCrop(32, padding=4),
+    #         transforms.RandomHorizontalFlip(),
+    #         transforms.ToTensor(),
+    #     ])
+    #     transform_test = transforms.Compose([transforms.ToTensor()])
+    #     trainset = torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=True, download=True, transform=transform_train)
+    #     testset = torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=False, download=True, transform=transform_test)#可能要让这个数据集有train=False的功能？
+    #     ospset =  torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=True, download=True, transform=transform_train)
+    #     subset = list(range(0, args.osp_data_len))
+    #     ospset = torch.utils.data.Subset(ospset, subset)
+    
+    # 设置训练集和测试集的比例
+    train_size = int(0.8 * len(trainDataSet))  # 80% 作为训练集
+    test_size = len(trainDataSet) - train_size  # 剩余 20% 作为测试集
+    # 随机分割数据集
+    trainset, testset = random_split(trainDataSet, [train_size, test_size])
+    osp_size = args.osp_data_len  # 定义 OSP 数据集的大小
+    subset = list(range(0, args.osp_data_len))
+    ospset = torch.utils.data.Subset(trainset, subset)
 
-        transform_train = transforms.Compose([
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(15),
-                transforms.ToTensor(),
-            ])
-        transform_test = transforms.Compose([transforms.ToTensor()])
-
-        trainset = torchvision.datasets.CIFAR100(root='/scratch/CIFAR100', train=True, download=True, transform=transform_train)
-        testset = torchvision.datasets.CIFAR100(root='/scratch/CIFAR100', train=False, download=True, transform=transform_test)
-
-
-        ospset =  torchvision.datasets.CIFAR100(root='/scratch/CIFAR100', train=True, download=True, transform=transform_train)
-        subset = list(range(0, args.osp_data_len))
-        ospset = torch.utils.data.Subset(ospset, subset)
-
-
-    elif args.dataset == 'cifar10':
-        transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-        ])
-        transform_test = transforms.Compose([transforms.ToTensor()])
-        trainset = torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=True, download=True, transform=transform_train)
-        testset = torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=False, download=True, transform=transform_test)
-        ospset =  torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=True, download=True, transform=transform_train)
-        subset = list(range(0, args.osp_data_len))
-        ospset = torch.utils.data.Subset(ospset, subset)
-    else:
-        raise ValueError("Invalid dataset name")
     train_loader = torch.utils.data.DataLoader(
         dataset=trainset,
         batch_size=args.batch_size,
