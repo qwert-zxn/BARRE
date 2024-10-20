@@ -205,6 +205,7 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
     for iteration in range(args.M):
         print('==> Building model {}/{}'.format(iteration+1,args.M))
         model = get_architecture(args)
+        model.load_state_dict(global_parameters)# 将 global_parameters 加载到模型中
         model = nn.DataParallel(model).cuda()
         model_ls.append(model)
         prob = np.ones(len(model_ls))/len(model_ls)
