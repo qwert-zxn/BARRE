@@ -34,6 +34,35 @@ parser.add_argument('-sp', '--save_path', type=str, default='./checkpoints', hel
 parser.add_argument('-iid', '--IID', type=int, default=0, help='the way to allocate data to clients')
 
 
+
+parser = argparse.ArgumentParser(description='PyTorch BARRE Training')
+parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--resume', '--r', default=-1, type=int)
+parser.add_argument('--resume_iter', '--ri', default=-1, type=int)
+parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')#这个应该是作为参数传进来
+parser.add_argument('--total_epochs', "--te", type=int, default=100)
+parser.add_argument("--model", type=str, default="res18", choices=["res18", "res20", "mbv1"])
+parser.add_argument("--optimizer", "--opt", type=str, default="sgd", choices=["sgd", "adam"])
+parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100"])
+parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--normalize", action="store_true")
+parser.add_argument("--no_aug", action="store_true")
+parser.add_argument("--val_interval", "--vi", type=int, default=1)
+parser.add_argument("--data", type=str, default="cifar10")
+parser.add_argument('--outdir', default='outdir', type=str)
+parser.add_argument('--num_workers', default=16, type=int)
+
+parser.add_argument("--M", default=1, type=int)
+
+parser.add_argument("--other_weight", "--ow", default=0, type=float, help='for MCE loss, set to 1')
+
+## osp args
+parser.add_argument('--osp_epochs', "--oe", type=int, default=10)
+parser.add_argument('--osp_freq', "--of", type=int, default=10)
+parser.add_argument('--osp_lr_max', "--olr", type=float, default=10)
+parser.add_argument('--osp_batch_size', "--obm", type=int, default=512) #batch size used for osp
+parser.add_argument('--osp_data_len', type=int, default=2048) #subset of trainset used for osp
+
 def test_mkdir(path):
     if not os.path.isdir(path):
         os.mkdir(path)

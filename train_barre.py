@@ -17,40 +17,13 @@ from utils import seed_torch, arr_to_str, proj_onto_simplex
 from datasets import get_loaders, get_normalize, get_num_classes
 
 
-
-parser = argparse.ArgumentParser(description='PyTorch BARRE Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--resume', '--r', default=-1, type=int)
-parser.add_argument('--resume_iter', '--ri', default=-1, type=int)
-parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')#这个应该是作为参数传进来
-parser.add_argument('--total_epochs', "--te", type=int, default=100)
-parser.add_argument("--model", type=str, default="res18", choices=["res18", "res20", "mbv1"])
-parser.add_argument("--optimizer", "--opt", type=str, default="sgd", choices=["sgd", "adam"])
-parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100"])
-parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--normalize", action="store_true")
-parser.add_argument("--no_aug", action="store_true")
-parser.add_argument("--val_interval", "--vi", type=int, default=1)
-parser.add_argument("--data", type=str, default="cifar10")
-parser.add_argument('--outdir', default='outdir', type=str)
-parser.add_argument('--num_workers', default=16, type=int)
-
-parser.add_argument("--M", default=1, type=int)
-
-parser.add_argument("--other_weight", "--ow", default=0, type=float, help='for MCE loss, set to 1')
-
-## osp args
-parser.add_argument('--osp_epochs', "--oe", type=int, default=10)
-parser.add_argument('--osp_freq', "--of", type=int, default=10)
-parser.add_argument('--osp_lr_max', "--olr", type=float, default=10)
-parser.add_argument('--osp_batch_size', "--obm", type=int, default=512) #batch size used for osp
-parser.add_argument('--osp_data_len', type=int, default=2048) #subset of trainset used for osp
-
 def add_path(path):
     if path not in sys.path:
         print('Adding {}'.format(path))
         sys.path.append(path)
-        
+
+add_path("../lib")       
+
 def add_normal_noise(inputs, delta_range_c = 5):  # add_P
     noise = np.random.uniform(delta_range_c, 2 * delta_range_c, inputs.shape)
     noisy_inputs = np.clip(inputs + noise, 0, 255)
@@ -142,10 +115,8 @@ def weighted_average_model(model_ls, prob):
 criterion = nn.CrossEntropyLoss()
 
 
-def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters):
-    
-    args = parser.parse_args()
-    #print("Args:", args)
+def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters,args):\
+
     outdir = args.outdir
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -153,8 +124,6 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
     trainloader, osploader = get_loaders(args,client.train_ds)
     normalize = get_normalize(args)
     num_classes = get_num_classes(args)
-
-    add_path("../lib")
 
     model_ls = []
     for iteration in range(args.M):
