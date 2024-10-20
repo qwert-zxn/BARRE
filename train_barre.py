@@ -93,13 +93,10 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader,normalize):
     grad = err/n
     return grad
 
-def weighted_average_model(model_ls, prob):
+def weighted_average_model(model_ls, prob, Net):#得搞清楚这个net是啥，起到什么作用
     # 初始化一个空白模型，该模型结构与模型列表中的模型相同
-    final_model = get_architecture(args)  # 创建一个新模型
-    final_model = nn.DataParallel(final_model).cuda()
-
     # 初始化最终模型的参数为零
-    for param in final_model.parameters():
+    for param in Net.parameters():
         param.data.zero_()
 
     # 遍历每个模型，按照采样概率 prob 对其参数进行加权
@@ -107,15 +104,15 @@ def weighted_average_model(model_ls, prob):
         model_params = model.state_dict()  # 获取模型的参数
         for key in model_params:
             # 按照概率 prob 加权累加到 final_model 的参数中
-            final_model.state_dict()[key].data += model_params[key].data * prob[i]
+            Net.state_dict()[key].data += model_params[key].data * prob[i]
 
     # 返回最终模型的参数
-    return final_model.state_dict()
+    return Net.state_dict()
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss()#这是干啥的
 
 
-def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters,args):\
+def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters, args):\
 
     outdir = args.outdir
     if not os.path.exists(outdir):
@@ -128,9 +125,8 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
     model_ls = []
     for iteration in range(args.M):
         print('==> Building model {}/{}'.format(iteration+1,args.M))
-        model = get_architecture(args)
-        model.load_state_dict(global_parameters)# 将 global_parameters 加载到模型中
-        model = nn.DataParallel(model).cuda()
+        model = Net
+        model.load_state_dict(global_parameters, strict=True)# 将 global_parameters 加载到模型中
         model_ls.append(model)
         prob = np.ones(len(model_ls))/len(model_ls)
         print('alpha = ',prob)
@@ -187,5 +183,5 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
                         print('==> End OSP routine, final alpha=' + arr_to_str(prob_best))
                         prob = np.copy(prob_best)
     
-    return weighted_average_model(model_ls, prob)
+    return weighted_average_model(model_ls, prob, Net)
     

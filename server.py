@@ -22,7 +22,7 @@ parser.add_argument('-B', '--batchsize', type=int, default=10, help='local train
 # 模型名称
 parser.add_argument('-mn', '--model_name', type=str, default='mnist_cnn', help='the model to train')
 # 学习率
-parser.add_argument('-lr', "--learning_rate", type=float, default=0.01, help="learning rate, \
+parser.add_argument('-lr', "--learning_rate", type=float, default=0.1, help="learning rate, \
                     use value from origin paper as default")
 parser.add_argument('-dataset',"--dataset",type=str,default="mnist",help="需要训练的数据集")
 # 模型验证频率（通信频率）
@@ -35,22 +35,18 @@ parser.add_argument('-iid', '--IID', type=int, default=0, help='the way to alloc
 
 
 
-parser = argparse.ArgumentParser(description='PyTorch BARRE Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+#下面是BARRE的参数
 parser.add_argument('--resume', '--r', default=-1, type=int)
 parser.add_argument('--resume_iter', '--ri', default=-1, type=int)
 parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')#这个应该是作为参数传进来
 parser.add_argument('--total_epochs', "--te", type=int, default=100)
-parser.add_argument("--model", type=str, default="res18", choices=["res18", "res20", "mbv1"])
-parser.add_argument("--optimizer", "--opt", type=str, default="sgd", choices=["sgd", "adam"])
-parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100"])
+parser.add_argument("--optimizer", "--opt", type=str, default="sgd", choices=["sgd", "adam"])#可能需要看一下模型类型需不需要自己设置？
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--normalize", action="store_true")
 parser.add_argument("--no_aug", action="store_true")
 parser.add_argument("--val_interval", "--vi", type=int, default=1)
-parser.add_argument("--data", type=str, default="cifar10")
 parser.add_argument('--outdir', default='outdir', type=str)
-parser.add_argument('--num_workers', default=16, type=int)
+parser.add_argument('--num_workers', default=16, type=int)#这是啥
 
 parser.add_argument("--M", default=1, type=int)
 
