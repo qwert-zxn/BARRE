@@ -146,20 +146,6 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
             elif args.optimizer == "adam":
                 optimizer = optim.Adam(model_ls[-1].parameters(), lr=args.lr, weight_decay=5e-4)
 
-            iter_save_path = os.path.join(outdir, "iter{:d}".format(iteration))
-            ckpt_path = os.path.join(iter_save_path, 'epoch{:}.pth'.format(args.resume))
-            if not os.path.exists(iter_save_path):
-                os.makedirs(iter_save_path)
-            if os.path.exists(ckpt_path):
-                print('==> Resuming from checkpoint {:d}..'.format(args.resume))
-                checkpoint = torch.load(ckpt_path)
-                model_ls[-1].load_state_dict(checkpoint['net'])
-                optimizer.load_state_dict(checkpoint['optimizer'])
-                if args.optimizer == "sgd":
-                    lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
-                start_epoch = args.resume
-
-            print('==> Begin training for iteration {:d} ..'.format(iteration))
             for epoch in range(start_epoch + 1, args.total_epochs):
 
                 train(epoch,model_ls, prob,lr_scheduler,optimizer,trainloader,normalize)

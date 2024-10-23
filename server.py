@@ -18,7 +18,7 @@ parser.add_argument('-cf', '--cfraction', type=float, default=0.1, help='C fract
 # 训练次数(客户端更新次数)
 parser.add_argument('-E', '--epoch', type=int, default=5, help='local train epoch')
 # batchsize大小
-parser.add_argument('-B', '--batchsize', type=int, default=10, help='local train batch size')
+#parser.add_argument('-B', '--batchsize', type=int, default=10, help='local train batch size')
 # 模型名称
 parser.add_argument('-mn', '--model_name', type=str, default='mnist_cnn', help='the model to train')
 # 学习率
@@ -36,7 +36,7 @@ parser.add_argument('-iid', '--IID', type=int, default=0, help='the way to alloc
 
 
 #下面是BARRE的参数
-parser.add_argument('--resume', '--r', default=-1, type=int)
+
 parser.add_argument('--resume_iter', '--ri', default=-1, type=int)
 parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')#这个应该是作为参数传进来
 parser.add_argument('--total_epochs', "--te", type=int, default=100)
@@ -46,9 +46,9 @@ parser.add_argument("--normalize", action="store_true")
 parser.add_argument("--no_aug", action="store_true")
 parser.add_argument("--val_interval", "--vi", type=int, default=1)
 parser.add_argument('--outdir', default='outdir', type=str)
-parser.add_argument('--num_workers', default=16, type=int)#这是啥
+parser.add_argument('--num_workers', default=16, type=int)#子进程数量
 
-parser.add_argument("--M", default=1, type=int)
+parser.add_argument("--M", default=1, type=int)#分类器个数
 
 parser.add_argument("--other_weight", "--ow", default=0, type=float, help='for MCE loss, set to 1')
 
