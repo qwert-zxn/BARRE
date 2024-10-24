@@ -10,8 +10,6 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
-import clients
-from architectures import get_architecture
 # from attack import arc_attack, apgd_attack
 from utils import seed_torch, arr_to_str, proj_onto_simplex
 from datasets import get_loaders
@@ -24,9 +22,10 @@ def add_path(path):
 
 add_path("../lib")       
 
-def add_normal_noise(inputs, delta_range_c = 5):  # add_P
-    noise = np.random.uniform(delta_range_c, 2 * delta_range_c, inputs.shape)
-    noisy_inputs = np.clip(inputs + noise, 0, 255)
+def add_normal_noise(inputs, delta_range_c = 5):
+    noise = torch.rand_like(inputs)# 生成 [0, 1] 范围内的随机噪声
+    noise = noise * delta_range_c + delta_range_c# 将噪声缩放到 [c, 2c] 范围内
+    noisy_inputs = torch.clamp(inputs + noise, 0, 255)# 加噪声并限制在 [0, 255] 范围内
     return noisy_inputs
 
 def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,args):
@@ -122,31 +121,31 @@ def localUpdateBARRE(client, epoch, Net, global_parameters, args):
     #normalize = get_normalize(args)
 
     model_ls = []
-    for iteration in range(args.M):
+    for iteration in range(args['M']):
         model = Net
-        model.load_state_dict(global_parameters, strict=True)# 将 global_parameters 加载到模型中
+        model.load_state_dict(global_parameters)  # 将 global_parameters 中的模型参数加载到模型中
         model_ls.append(model)
         prob = np.ones(len(model_ls))/len(model_ls)
         print('alpha = ',prob)
         if iteration >= 1:
             model_ls[-1].load_state_dict(model_ls[-2].state_dict())
 
-        if iteration <= args.resume_iter:
+        if iteration <= args['resume_iter']:
             print('需要恢复模型状态')
 
         else:
             start_epoch = -1  # start from epoch 0 or last checkpoint epoch
 
             if args['optimizer'] == "sgd":
-                optimizer = optim.SGD(model_ls[-1].parameters(), lr=args['lr'], momentum=0.9, weight_decay=5e-4)
+                optimizer = optim.SGD(model_ls[-1].parameters(), lr=args['learning_rate'], momentum=0.9, weight_decay=5e-4)
                 lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
                                     milestones=[int(0.5 * args['total_epochs']), int(0.75 * args['total_epochs'])], gamma=0.1)
             elif args['optimizer'] == "adam":
-                optimizer = optim.Adam(model_ls[-1].parameters(), lr=args['lr'], weight_decay=5e-4)
+                optimizer = optim.Adam(model_ls[-1].parameters(), lr=args['learning_rate'], weight_decay=5e-4)
 
             for epoch in range(start_epoch + 1, args['total_epochs']):
 
-                train(epoch,model_ls, prob,lr_scheduler,optimizer,trainloader,args)
+                train(epoch,model_ls, lr_scheduler,optimizer,trainloader,args)
                 if args['optimizer'] == "sgd":
                     lr_scheduler.step()
                 if epoch >= args['total_epochs']//2:
@@ -168,4 +167,3 @@ def localUpdateBARRE(client, epoch, Net, global_parameters, args):
                         prob = np.copy(prob_best)
     
     return weighted_average_model(model_ls, prob, Net)
-    

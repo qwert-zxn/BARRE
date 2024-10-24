@@ -1,0 +1,79 @@
+[33mcommit 8aaa760bd0088e5ae9fc0cec436621825a217c83[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: junitt <2058067865@qq.com>
+Date:   Thu Oct 24 14:28:48 2024 +0800
+
+    改了args的类型、normalize
+
+[33mcommit b31ff52d1db8e150c73356d0b87ee50f35c22ac7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Wed Oct 23 22:04:55 2024 +0800
+
+    改了点参数
+
+[33mcommit 02a9d045324d6c5ef2fc381e42551a214e74bc4b[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Mon Oct 21 00:44:40 2024 +0800
+
+    改了BARRE的model
+    
+    改了BARRE的model，改为Net，把BARRE的model超参数也处理了一下
+
+[33mcommit a5085da123fa39875cfe0a87ebcd6c87f7d68113[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sun Oct 20 23:49:04 2024 +0800
+
+    有封装了一下
+
+[33mcommit ddf91d1fbe7a8ad9ff092949277507ba79ec454c[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sun Oct 20 22:04:25 2024 +0800
+
+    删掉了BARRE恢复与保存训练数据的部分
+
+[33mcommit e2a29d189c6d16f6b2b75f1539dcc3d4a1ada025[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sun Oct 20 19:55:21 2024 +0800
+
+    将 global_parameters 加载到模型中
+
+[33mcommit fda1aff1d1b9ef9e357730e0705f654e614912f5[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sun Oct 20 19:43:19 2024 +0800
+
+    简单拼了一下数据集
+
+[33mcommit 1fca5adbc516e368d9c293460c09d7edb9804ded[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sat Oct 19 23:42:35 2024 +0800
+
+    试着封装了一下，传了参数到BARRE里
+
+[33mcommit 654fe45c1c92e1d0a5e637405e67a053d330faf8[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sat Oct 19 21:38:04 2024 +0800
+
+    加了fedavg
+
+[33mcommit 354c8ac485944495053b723021aeb60f84a73577[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sat Oct 19 21:34:22 2024 +0800
+
+    改成随机噪声
+
+[33mcommit e54c6fb56c7664ba86bf1148d79affd8f7abb0fe[m
+Author: qwert-zxn <102808803+qwert-zxn@users.noreply.github.com>
+Date:   Sat Oct 19 18:05:00 2024 +0800
+
+    改了adv_inp
+
+[33mcommit 1a42d89214db58200abd73f29ae5f8ee1e3bebe6[m
+Author: hsndbk4 <hassan.dbouk.96@gmail.com>
+Date:   Mon Sep 4 19:14:27 2023 -0700
+
+    Add code
+
+[33mcommit 8a5a894881f643b88c7e5dc288a8c44111fead9e[m
+Author: Hassan Dbouk <60821383+hsndbk4@users.noreply.github.com>
+Date:   Fri Apr 28 16:15:38 2023 -0700
+
+    Initial commit

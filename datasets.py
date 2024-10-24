@@ -59,22 +59,22 @@ def get_loaders(args, trainDataSet):#改成如果dataset直接是trainDataSet，
     #     ospset = torch.utils.data.Subset(ospset, subset)
     
     
-    subset = list(range(0, args.osp_data_len))
+    subset = list(range(0, args['osp_data_len']))
     ospset = torch.utils.data.Subset(trainDataSet, subset)
 
     train_loader = torch.utils.data.DataLoader(
         dataset=trainDataSet,
-        batch_size=args.batch_size,
+        batch_size=args['batch_size'],
         shuffle=True,
         pin_memory=True,
-        num_workers=args.num_workers,
+        num_workers=args['num_workers'],
     )
 
     osp_loader = torch.utils.data.DataLoader(
         dataset=ospset,
-        batch_size=args.osp_batch_size,
+        batch_size=args['osp_batch_size'],
         shuffle=False,
         pin_memory=True,
-        num_workers=args.num_workers,
+        num_workers=args['num_workers'],
     )
     return train_loader, osp_loader

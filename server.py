@@ -48,7 +48,7 @@ parser.add_argument("--val_interval", "--vi", type=int, default=1)
 parser.add_argument('--outdir', default='outdir', type=str)
 parser.add_argument('--num_workers', default=16, type=int)#子进程数量
 
-parser.add_argument("--M", default=1, type=int)#分类器个数
+parser.add_argument("--M", default=3, type=int)#分类器个数
 
 parser.add_argument("--other_weight", "--ow", default=0, type=float, help='for MCE loss, set to 1')
 
@@ -188,7 +188,7 @@ if __name__=="__main__":
             # 获取当前Client训练得到的参数
             # 这一行代码表示Client端的训练函数，我们详细展开：
             # local_parameters 得到客户端的局部变量
-            local_parameters = myClients.clients_set[client].localUpdate(args['epoch'], opti, global_parameters,args)
+            local_parameters = myClients.clients_set[client].localUpdate(args['epoch'], net, global_parameters,args)
             # 对所有的Client返回的参数累加（最后取平均值）
             if sum_parameters is None:
                 sum_parameters = {}
