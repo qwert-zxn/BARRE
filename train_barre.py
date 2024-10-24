@@ -33,9 +33,10 @@ def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,args):
     train_other_adv_loss = 0.
     adv_correct = 0
     total = 0
-    pbar = tqdm(trainloader)
+    #pbar = tqdm(trainloader)
+    pbar = trainloader
     curr_lr = lr_scheduler.get_lr()[0]
-    pbar.set_description("Train:{:3d} epoch lr {:.1e}".format(epoch, curr_lr))
+    #pbar.set_description("Train:{:3d} epoch lr {:.1e}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
         #adv_inp = apgd_attack(model_ls, inputs, targets, prob, 8 / 255.0, 2 / 255.0, 10, other_weight=args.other_weight, num_classes=num_classes, normalize=normalize)
@@ -61,11 +62,11 @@ def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,args):
         train_adv_loss += adv_loss.item()
         train_other_adv_loss += other_advloss.item()
 
-        pbar_dic = OrderedDict()
-        pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * adv_correct / total)
-        pbar_dic['adv loss'] = '{:.3f}'.format(train_adv_loss / (batch_idx + 1))
-        pbar_dic['otheradv loss'] = '{:.3f}'.format(train_other_adv_loss / (batch_idx + 1))
-        pbar.set_postfix(pbar_dic)
+        # pbar_dic = OrderedDict()
+        # pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * adv_correct / total)
+        # pbar_dic['adv loss'] = '{:.3f}'.format(train_adv_loss / (batch_idx + 1))
+        # pbar_dic['otheradv loss'] = '{:.3f}'.format(train_other_adv_loss / (batch_idx + 1))
+        # pbar.set_postfix(pbar_dic)
 
 
 def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
@@ -121,9 +122,9 @@ def localUpdateBARRE(client, epoch, Net, global_parameters, args):
     #normalize = get_normalize(args)
 
     model_ls = []
+    model = Net
+    model.load_state_dict(global_parameters)  # 将 global_parameters 中的模型参数加载到模型中
     for iteration in range(args['M']):
-        model = Net
-        model.load_state_dict(global_parameters)  # 将 global_parameters 中的模型参数加载到模型中
         model_ls.append(model)
         prob = np.ones(len(model_ls))/len(model_ls)
         print('alpha = ',prob)
