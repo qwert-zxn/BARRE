@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 from getData import GetDataSet
-import train_barre
+from train_barre import localUpdateBARRE
 
 class client(object):
     def __init__(self, trainDataSet, dev):
@@ -49,8 +49,8 @@ class client(object):
     #     # 返回当前Client基于自己的数据训练得到的新的模型参数
     #     return Net.state_dict()
 
-    def localUpdate(self, localEpoch, localBatchSize, Net, lossFun, opti, global_parameters):
-        return localUpdateBARRE(self, localEpoch, localBatchSize, Net, lossFun, opti, global_parameters)
+    def localUpdate(self, localEpoch, Net, global_parameters,args):
+        return localUpdateBARRE(self, localEpoch, Net, global_parameters,args)
 
     def local_val(self):
         pass

@@ -19,29 +19,29 @@ cifar10_std = (0.2471, 0.2435, 0.2616) # equals np.std(train_set.train_data, axi
 
 
 
-def get_num_classes(args):
-    if args.dataset == 'cifar10':
-        return 10
-    elif args.dataset == 'cifar100':
-        return 100
-    else:
-        raise ValueError('Invalid dataset name.')
+# def get_num_classes(args):
+#     if args.dataset == 'cifar10':
+#         return 10
+#     elif args.dataset == 'cifar100':
+#         return 100
+#     else:
+#         raise ValueError('Invalid dataset name.')
 
 
-def get_normalize(args):
-    if args.normalize:
-        if args.dataset == 'cifar100':
-            mu = torch.tensor(CIFAR100_MEAN).view(3,1,1).cuda()
-            std = torch.tensor(CIFAR100_STD).view(3,1,1).cuda()
-        elif args.dataset == 'cifar10':
-            mu = torch.tensor(cifar10_mean).view(3,1,1).cuda()
-            std = torch.tensor(cifar10_std).view(3,1,1).cuda()
-        else:
-            raise ValueError("Invalid dataset name")
-        normalize = lambda X: (X - mu)/std
-    else:
-        normalize = lambda X: X
-    return normalize
+# def get_normalize(args):fed好像做过标准化处理了，所以这个函数应该不需要了
+#     if args['normalize']:
+#         if args.dataset == 'cifar100':
+#             mu = torch.tensor(CIFAR100_MEAN).view(3,1,1).cuda()
+#             std = torch.tensor(CIFAR100_STD).view(3,1,1).cuda()
+#         elif args['dataset'] == 'cifar10':
+#             mu = torch.tensor(cifar10_mean).view(3,1,1).cuda()
+#             std = torch.tensor(cifar10_std).view(3,1,1).cuda()
+#         else:
+#             raise ValueError("Invalid dataset name")
+#         normalize = lambda X: (X - mu)/std
+#     else:
+#         normalize = lambda X: X
+#     return normalize
 
 def get_loaders(args, trainDataSet):#改成如果dataset直接是trainDataSet，怎么办
     #trainDataSet的定义是trainDataSet=TensorDataset(torch.tensor(local_data), torch.tensor(local_label))，应该只有数据和标签

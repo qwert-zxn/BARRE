@@ -36,8 +36,8 @@ class GetDataSet(object):
                 然后将其划分为200组大小为300的数据切片，然后分给每个Client两个切片。
         '''
         # 加载数据集
-        data_dir = r'.\data\MNIST'
-        # data_dir = r'./data/MNIST'
+        #data_dir = r'.\data\MNIST'
+        data_dir = r'./data/MNIST'
         # python路径拼接os.path.join() 路径变为.\data\MNIST\train-images-idx3-ubyte.gz
         train_images_path = os.path.join(data_dir, 'train-images-idx3-ubyte.gz')
         train_labels_path = os.path.join(data_dir, 'train-labels-idx1-ubyte.gz')

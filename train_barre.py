@@ -14,7 +14,7 @@ import clients
 from architectures import get_architecture
 # from attack import arc_attack, apgd_attack
 from utils import seed_torch, arr_to_str, proj_onto_simplex
-from datasets import get_loaders, get_normalize, get_num_classes
+from datasets import get_loaders
 
 
 def add_path(path):
@@ -29,7 +29,7 @@ def add_normal_noise(inputs, delta_range_c = 5):  # add_P
     noisy_inputs = np.clip(inputs + noise, 0, 255)
     return noisy_inputs
 
-def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,normalize):
+def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,args):
     train_adv_loss = 0.
     train_other_adv_loss = 0.
     adv_correct = 0
@@ -43,15 +43,15 @@ def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,normalize):
         adv_inp = add_normal_noise(inputs)
         optimizer.zero_grad()
         model_ls[-1].train()
-        pred = model_ls[-1](normalize(adv_inp))
+        pred = model_ls[-1](adv_inp)
         adv_loss = F.cross_entropy(pred, targets, reduction="none").mean()
         _, adv_predicted = pred.detach().max(1)
 
-        other_pred = -model_ls[-1](normalize(adv_inp))
+        other_pred = -model_ls[-1](adv_inp)
         other_advloss = - F.log_softmax(other_pred, dim=1) * (1 - F.one_hot(targets, num_classes=10))
         other_advloss = other_advloss.sum() / ((10 - 1) * len(targets))
 
-        total_advloss = adv_loss + args.other_weight * other_advloss
+        total_advloss = adv_loss + args['other_weight'] * other_advloss
 
         total_advloss.backward()
         total += targets.size(0)
@@ -69,7 +69,7 @@ def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,normalize):
         pbar.set_postfix(pbar_dic)
 
 
-def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader,normalize):
+def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
 
     M = len(prob)
     err = np.zeros(M)
@@ -83,7 +83,7 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader,normalize):
         #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=2)
         adv_inp = add_normal_noise(inputs)
         for m in range(M):
-            t_m = model_ls[m](normalize(adv_inp))
+            t_m = model_ls[m](adv_inp)
             err[m]+= (t_m.max(1)[1] != targets).sum().item()
 
         n += targets.size(0)
@@ -112,19 +112,17 @@ def weighted_average_model(model_ls, prob, Net):#得搞清楚这个net是啥，�
 criterion = nn.CrossEntropyLoss()#这是干啥的
 
 
-def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_parameters, args):\
+def localUpdateBARRE(client, epoch, Net, global_parameters, args):
 
-    outdir = args.outdir
+    outdir = args['outdir']
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-    seed_torch(args.seed)
+    seed_torch(args['seed'])
     trainloader, osploader = get_loaders(args,client.train_ds)
-    normalize = get_normalize(args)
-    num_classes = get_num_classes(args)
+    #normalize = get_normalize(args)
 
     model_ls = []
     for iteration in range(args.M):
-        print('==> Building model {}/{}'.format(iteration+1,args.M))
         model = Net
         model.load_state_dict(global_parameters, strict=True)# 将 global_parameters 加载到模型中
         model_ls.append(model)
@@ -139,26 +137,26 @@ def localUpdateBARRE(client, epoch, batch_size, Net, lossFun, opti, global_param
         else:
             start_epoch = -1  # start from epoch 0 or last checkpoint epoch
 
-            if args.optimizer == "sgd":
-                optimizer = optim.SGD(model_ls[-1].parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+            if args['optimizer'] == "sgd":
+                optimizer = optim.SGD(model_ls[-1].parameters(), lr=args['lr'], momentum=0.9, weight_decay=5e-4)
                 lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                    milestones=[int(0.5 * args.total_epochs), int(0.75 * args.total_epochs)], gamma=0.1)
-            elif args.optimizer == "adam":
-                optimizer = optim.Adam(model_ls[-1].parameters(), lr=args.lr, weight_decay=5e-4)
+                                    milestones=[int(0.5 * args['total_epochs']), int(0.75 * args['total_epochs'])], gamma=0.1)
+            elif args['optimizer'] == "adam":
+                optimizer = optim.Adam(model_ls[-1].parameters(), lr=args['lr'], weight_decay=5e-4)
 
-            for epoch in range(start_epoch + 1, args.total_epochs):
+            for epoch in range(start_epoch + 1, args['total_epochs']):
 
-                train(epoch,model_ls, prob,lr_scheduler,optimizer,trainloader,normalize)
-                if args.optimizer == "sgd":
+                train(epoch,model_ls, prob,lr_scheduler,optimizer,trainloader,args)
+                if args['optimizer'] == "sgd":
                     lr_scheduler.step()
-                if epoch >= args.total_epochs//2:
-                    if ((epoch - args.total_epochs//2 + 1)% args.osp_freq == 0 or epoch == args.total_epochs-1) and iteration > 2:
+                if epoch >= args['total_epochs']//2:
+                    if ((epoch - args['total_epochs']//2 + 1)% args['osp_freq'] == 0 or epoch == args['total_epochs']-1) and iteration > 2:
                         eta_best = 1
-                        osp_lr_init = args.osp_lr_max*lr_scheduler.get_lr()[0]
+                        osp_lr_init = args['osp_lr_max']*lr_scheduler.get_lr()[0]
                         print('==> Begin OSP routine, starting alpha=' + arr_to_str(prob))
-                        for t in range(args.osp_epochs):
+                        for t in range(args['osp_epochs']):
                             osp_lr = osp_lr_init/(t+1)
-                            g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader,normalize) #sub-gradient of eta(alpha_t)
+                            g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader) #sub-gradient of eta(alpha_t)
                             eta_t = sum(g_t*prob) #eta(alpha_t)
                             if eta_t <= eta_best:
                                 t_best = t

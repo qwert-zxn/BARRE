@@ -188,8 +188,7 @@ if __name__=="__main__":
             # 获取当前Client训练得到的参数
             # 这一行代码表示Client端的训练函数，我们详细展开：
             # local_parameters 得到客户端的局部变量
-            local_parameters = myClients.clients_set[client].localUpdate(args['epoch'], args['batchsize'], net,
-                                                                         loss_func, opti, global_parameters)
+            local_parameters = myClients.clients_set[client].localUpdate(args['epoch'], opti, global_parameters,args)
             # 对所有的Client返回的参数累加（最后取平均值）
             if sum_parameters is None:
                 sum_parameters = {}
@@ -239,3 +238,4 @@ if __name__=="__main__":
                                                                                                 args['cfraction'])))
 
     test_txt.close()
+    #python server.py -nc 100 -cf 0.1 -E 5 -mn mnist_cnn  -ncomm 1000 -iid 0 -lr 0.01 -vf 20 -g 0
