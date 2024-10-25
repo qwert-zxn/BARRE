@@ -24,18 +24,13 @@ add_path("../lib")
 
 def add_normal_noise(inputs, delta_range_c = 5):
     noise = torch.rand_like(inputs)# 生成 [0, 1] 范围内的随机噪声
-    noise = noise * delta_range_c + delta_range_c# 将噪声缩放到 [c, 2c] 范围内
+    #noise = noise * delta_range_c + delta_range_c# 将噪声缩放到 [c, 2c] 范围内
     noisy_inputs = torch.clamp(inputs + noise, 0, 255)# 加噪声并限制在 [0, 255] 范围内
     return noisy_inputs
 
 def train(epoch, model, lr_scheduler, optimizer, trainloader,args):
-    train_adv_loss = 0.
-    train_other_adv_loss = 0.
-    adv_correct = 0
-    total = 0
     #pbar = tqdm(trainloader)
     pbar = trainloader
-    curr_lr = lr_scheduler.get_lr()[0]
     #pbar.set_description("Train:{:3d} epoch lr {:.1e}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
@@ -44,24 +39,9 @@ def train(epoch, model, lr_scheduler, optimizer, trainloader,args):
         optimizer.zero_grad()
         model.train()
         pred = model(adv_inp)
-        adv_loss = F.cross_entropy(pred, targets, reduction="none").mean()
-        _, adv_predicted = pred.detach().max(1)
-
-        other_pred = -model(adv_inp)
-        other_advloss = - F.log_softmax(other_pred, dim=1) * (1 - F.one_hot(targets, num_classes=10))
-        other_advloss = other_advloss.sum() / ((10 - 1) * len(targets))
-
-        total_advloss = adv_loss + args['other_weight'] * other_advloss
-
-        total_advloss.backward()
-        total += targets.size(0)
-        adv_correct += adv_predicted.eq(targets).sum().item()
-
+        loss = F.cross_entropy(pred, targets, reduction="none").mean()
+        loss.backward()
         optimizer.step()
-
-        train_adv_loss += adv_loss.item()
-        train_other_adv_loss += other_advloss.item()
-
         # pbar_dic = OrderedDict()
         # pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * adv_correct / total)
         # pbar_dic['adv loss'] = '{:.3f}'.format(train_adv_loss / (batch_idx + 1))
@@ -76,7 +56,6 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
     n = 0
     #pbar = tqdm(osploader)
     curr_lr = osp_lr_init/(1+epoch)#可能要删
-    model_ls[-1].eval()
     #pbar.set_description("OSP:{:3d} epoch lr {:.4f}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(osploader):
         inputs, targets = inputs.cuda(), targets.cuda()
@@ -113,13 +92,13 @@ def weighted_average_model(model_ls, prob, Net):#得搞清楚这个net是啥，�
 criterion = nn.CrossEntropyLoss()#这是干啥的
 
 
-def localUpdateBARRE(client, epoch, Net, global_parameters, args):
+def localUpdateBARRE(train_ds, Net, global_parameters, args):
 
     outdir = args['outdir']
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     seed_torch(args['seed'])
-    trainloader, osploader = get_loaders(args,client.train_ds)
+    trainloader, osploader = get_loaders(args, train_ds)
     #normalize = get_normalize(args)
 
     model_ls = []

@@ -50,7 +50,7 @@ class client(object):
     #     return Net.state_dict()
 
     def localUpdate(self, localEpoch, Net, global_parameters,args):
-        return localUpdateBARRE(self, localEpoch, Net, global_parameters,args)
+        return localUpdateBARRE(self.train_ds, Net, global_parameters,args)
 
     def local_val(self):
         pass
