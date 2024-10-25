@@ -49,7 +49,7 @@ class client(object):
     #     # 返回当前Client基于自己的数据训练得到的新的模型参数
     #     return Net.state_dict()
 
-    def localUpdate(self, localEpoch, Net, global_parameters,args):
+    def localUpdate(self, Net, global_parameters,args):
         return localUpdateBARRE(self.train_ds, Net, global_parameters,args)
 
     def local_val(self):

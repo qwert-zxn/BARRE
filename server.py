@@ -39,7 +39,7 @@ parser.add_argument('-iid', '--IID', type=int, default=0, help='the way to alloc
 
 parser.add_argument('--resume_iter', '--ri', default=-1, type=int)
 parser.add_argument('--batch_size', '--b', type=int, default=256, help='batch size')#这个应该是作为参数传进来
-parser.add_argument('--total_epochs', "--te", type=int, default=100)
+parser.add_argument('--total_epochs', "--te", type=int, default=10)
 parser.add_argument("--optimizer", "--opt", type=str, default="sgd", choices=["sgd", "adam"])#可能需要看一下模型类型需不需要自己设置？
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--normalize", action="store_true")
@@ -53,7 +53,7 @@ parser.add_argument("--M", default=3, type=int)#分类器个数
 parser.add_argument("--other_weight", "--ow", default=0, type=float, help='for MCE loss, set to 1')
 
 ## osp args
-parser.add_argument('--osp_epochs', "--oe", type=int, default=10)
+parser.add_argument('--osp_epochs', "--oe", type=int, default=4)
 parser.add_argument('--osp_freq', "--of", type=int, default=10)
 parser.add_argument('--osp_lr_max', "--olr", type=float, default=10)
 parser.add_argument('--osp_batch_size', "--obm", type=int, default=512) #batch size used for osp
@@ -188,7 +188,7 @@ if __name__=="__main__":
             # 获取当前Client训练得到的参数
             # 这一行代码表示Client端的训练函数，我们详细展开：
             # local_parameters 得到客户端的局部变量
-            local_parameters = myClients.clients_set[client].localUpdate(args['epoch'], net, global_parameters,args)
+            local_parameters = myClients.clients_set[client].localUpdate(net, global_parameters,args)
             # 对所有的Client返回的参数累加（最后取平均值）
             if sum_parameters is None:
                 sum_parameters = {}

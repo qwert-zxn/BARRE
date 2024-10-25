@@ -28,7 +28,7 @@ def add_normal_noise(inputs, delta_range_c = 5):
     noisy_inputs = torch.clamp(inputs + noise, 0, 255)# 加噪声并限制在 [0, 255] 范围内
     return noisy_inputs
 
-def train(epoch, model, lr_scheduler, optimizer, trainloader,args):
+def train(model, lr_scheduler, optimizer, trainloader,args):
     #pbar = tqdm(trainloader)
     pbar = trainloader
     #pbar.set_description("Train:{:3d} epoch lr {:.1e}".format(epoch, curr_lr))
@@ -123,7 +123,7 @@ def localUpdateBARRE(train_ds, Net, global_parameters, args):
 
             for epoch in range(start_epoch + 1, args['total_epochs']):
 
-                train(epoch, model, lr_scheduler,optimizer,trainloader,args)
+                train(model, lr_scheduler,optimizer,trainloader,args)
                 if args['optimizer'] == "sgd":
                     lr_scheduler.step()
                 
