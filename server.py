@@ -241,3 +241,4 @@ if __name__=="__main__":
     #python server.py -nc 100 -cf 0.1 -E 5 -mn mnist_cnn  -ncomm 1000 -iid 0 -lr 0.01 -vf 20 -g 0
     #python server.py -nc 10 -cf 0.2 -E 5 -mn mnist_cnn  -ncomm 10 -iid 1 -lr 0.01 -g 0 --M 3 --other_weight 1 --batch_size 64 --normalize --osp_data_len 1024 --osp_batch_size 128 --total_epochs 20
     #python server.py -nc 10 -cf 0.2 -E 5 -mn mnist_cnn  -ncomm 20 -iid 1 -lr 0.01 -g 0 --M 3 --other_weight 1 --batch_size 64 --normalize --osp_data_len 1024 --osp_batch_size 128 --total_epochs 20 
+    #python server.py -nc 100 -cf 0.1 -E 5 -mn mnist_cnn -ncomm 100 -iid 1 -lr 0.05 -g 0 --M 7 --other_weight 1 --batch_size 64 --normalize --osp_data_len 512 --osp_batch_size 128 --total_epochs 3 --optimizer sgd

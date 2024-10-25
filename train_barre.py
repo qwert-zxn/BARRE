@@ -155,7 +155,7 @@ def localUpdateBARRE(client, epoch, Net, global_parameters, args):
                         osp_lr_init = args['osp_lr_max']*lr_scheduler.get_lr()[0]
                         print('==> Begin OSP routine, starting alpha=' + arr_to_str(prob))
                         for t in range(args['osp_epochs']):
-                            osp_lr = osp_lr_init/(t+1)
+                            osp_lr = 0.3
                             g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader) #sub-gradient of eta(alpha_t)
                             eta_t = sum(g_t*prob) #eta(alpha_t)
                             if eta_t <= eta_best:
