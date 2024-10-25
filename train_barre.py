@@ -28,7 +28,7 @@ def add_normal_noise(inputs, delta_range_c = 5):
     noisy_inputs = torch.clamp(inputs + noise, 0, 255)# 加噪声并限制在 [0, 255] 范围内
     return noisy_inputs
 
-def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,args):
+def train(epoch, model, lr_scheduler, optimizer, trainloader,args):
     train_adv_loss = 0.
     train_other_adv_loss = 0.
     adv_correct = 0
@@ -42,12 +42,12 @@ def train(epoch, model_ls, lr_scheduler, optimizer, trainloader,args):
         #adv_inp = apgd_attack(model_ls, inputs, targets, prob, 8 / 255.0, 2 / 255.0, 10, other_weight=args.other_weight, num_classes=num_classes, normalize=normalize)
         adv_inp = add_normal_noise(inputs)
         optimizer.zero_grad()
-        model_ls[-1].train()
-        pred = model_ls[-1](adv_inp)
+        model.train()
+        pred = model(adv_inp)
         adv_loss = F.cross_entropy(pred, targets, reduction="none").mean()
         _, adv_predicted = pred.detach().max(1)
 
-        other_pred = -model_ls[-1](adv_inp)
+        other_pred = -model(adv_inp)
         other_advloss = - F.log_softmax(other_pred, dim=1) * (1 - F.one_hot(targets, num_classes=10))
         other_advloss = other_advloss.sum() / ((10 - 1) * len(targets))
 
@@ -74,22 +74,23 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
     M = len(prob)
     err = np.zeros(M)
     n = 0
-    pbar = tqdm(osploader)
+    #pbar = tqdm(osploader)
     curr_lr = osp_lr_init/(1+epoch)#可能要删
     model_ls[-1].eval()
-    pbar.set_description("OSP:{:3d} epoch lr {:.4f}".format(epoch, curr_lr))
-    for batch_idx, (inputs, targets) in enumerate(pbar):
+    #pbar.set_description("OSP:{:3d} epoch lr {:.4f}".format(epoch, curr_lr))
+    for batch_idx, (inputs, targets) in enumerate(osploader):
         inputs, targets = inputs.cuda(), targets.cuda()
         #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=2)
         adv_inp = add_normal_noise(inputs)
         for m in range(M):
+            model_ls[m].eval()  # 确保每个模型都在评估模式
             t_m = model_ls[m](adv_inp)
             err[m]+= (t_m.max(1)[1] != targets).sum().item()
 
         n += targets.size(0)
         pbar_dic = OrderedDict()
         pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * (1-sum(err*prob)/n))
-        pbar.set_postfix(pbar_dic)
+        #pbar.set_postfix(pbar_dic)
     grad = err/n
     return grad
 
@@ -122,14 +123,11 @@ def localUpdateBARRE(client, epoch, Net, global_parameters, args):
     #normalize = get_normalize(args)
 
     model_ls = []
+    prob=[]
     model = Net
     model.load_state_dict(global_parameters)  # 将 global_parameters 中的模型参数加载到模型中
     for iteration in range(args['M']):
-        model_ls.append(model)
-        prob = np.ones(len(model_ls))/len(model_ls)
         print('alpha = ',prob)
-        if iteration >= 1:
-            model_ls[-1].load_state_dict(model_ls[-2].state_dict())
 
         if iteration <= args['resume_iter']:
             print('需要恢复模型状态')
@@ -138,33 +136,36 @@ def localUpdateBARRE(client, epoch, Net, global_parameters, args):
             start_epoch = -1  # start from epoch 0 or last checkpoint epoch
 
             if args['optimizer'] == "sgd":
-                optimizer = optim.SGD(model_ls[-1].parameters(), lr=args['learning_rate'], momentum=0.9, weight_decay=5e-4)
+                optimizer = optim.SGD(model.parameters(), lr=args['learning_rate'], momentum=0.9, weight_decay=5e-4)
                 lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
                                     milestones=[int(0.5 * args['total_epochs']), int(0.75 * args['total_epochs'])], gamma=0.1)
             elif args['optimizer'] == "adam":
-                optimizer = optim.Adam(model_ls[-1].parameters(), lr=args['learning_rate'], weight_decay=5e-4)
+                optimizer = optim.Adam(model.parameters(), lr=args['learning_rate'], weight_decay=5e-4)
 
             for epoch in range(start_epoch + 1, args['total_epochs']):
 
-                train(epoch,model_ls, lr_scheduler,optimizer,trainloader,args)
+                train(epoch, model, lr_scheduler,optimizer,trainloader,args)
                 if args['optimizer'] == "sgd":
                     lr_scheduler.step()
-                if epoch >= args['total_epochs']//2:
-                    if ((epoch - args['total_epochs']//2 + 1)% args['osp_freq'] == 0 or epoch == args['total_epochs']-1) and iteration > 2:
-                        eta_best = 1
-                        osp_lr_init = args['osp_lr_max']*lr_scheduler.get_lr()[0]
-                        print('==> Begin OSP routine, starting alpha=' + arr_to_str(prob))
-                        for t in range(args['osp_epochs']):
-                            osp_lr = 0.3
-                            g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader) #sub-gradient of eta(alpha_t)
-                            eta_t = sum(g_t*prob) #eta(alpha_t)
-                            if eta_t <= eta_best:
-                                t_best = t
-                                prob_best = np.copy(prob)
-                                eta_best = eta_t
-                            print("best acc = {:2.2f} @ alpha_best = ".format(100.*(1-eta_best)) + arr_to_str(prob_best))
-                            prob = proj_onto_simplex(prob - osp_lr * g_t)
-                        print('==> End OSP routine, final alpha=' + arr_to_str(prob_best))
-                        prob = np.copy(prob_best)
+                
+            model_ls.append(model)
+            prob = np.ones(len(model_ls))/len(model_ls)
     
+    eta_best = 1
+    osp_lr_init = args['osp_lr_max']*lr_scheduler.get_lr()[0]
+    print('==> Begin OSP routine, starting alpha=' + arr_to_str(prob))
+    for t in range(args['osp_epochs']):
+        osp_lr = 0.3
+        g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader) #sub-gradient of eta(alpha_t)
+        eta_t = sum(g_t*prob) #eta(alpha_t)
+        if eta_t <= eta_best:
+            t_best = t
+            prob_best = np.copy(prob)
+            eta_best = eta_t
+        #print("best acc = {:2.2f} @ alpha_best = ".format(100.*(1-eta_best)) + arr_to_str(prob_best))
+        prob = proj_onto_simplex(prob - osp_lr * g_t)
+    print('==> End OSP routine, final alpha=' + arr_to_str(prob_best))
+    prob = np.copy(prob_best)                    
+    print('alpha = ', prob)
+
     return weighted_average_model(model_ls, prob, Net)
