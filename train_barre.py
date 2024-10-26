@@ -23,10 +23,10 @@ def add_path(path):
 
 add_path("../lib")       
 
-def add_normal_noise(inputs, delta_range_c = 5):
+def add_normal_noise(inputs, delta_range_c = 0.15):
     noise = torch.rand_like(inputs)# 生成 [0, 1] 范围内的随机噪声
-    #noise = noise * delta_range_c + delta_range_c# 将噪声缩放到 [c, 2c] 范围内
-    noisy_inputs = torch.clamp(inputs + noise, 0, 255)# 加噪声并限制在 [0, 255] 范围内
+    noise = noise * delta_range_c + delta_range_c# 将噪声缩放到 [c, 2c] 范围内
+    noisy_inputs = torch.clamp(inputs + noise, 0, 1)# 加噪声并限制在 [0, 255] 范围内
     return noisy_inputs
 
 def train(model, lr_scheduler, optimizer, trainloader, args):
@@ -93,10 +93,10 @@ def localUpdateBARRE(train_ds, Net, global_parameters, args):
 
     model_ls = []
     prob=[]
-    model = copy.deepcopy(Net)
+    model = Net
     model.load_state_dict(global_parameters)  # 将 global_parameters 中的模型参数加载到模型中
     for iteration in range(args['M']):
-
+        
         if iteration <= args['resume_iter']:
             print('需要恢复模型状态')
 
@@ -116,7 +116,7 @@ def localUpdateBARRE(train_ds, Net, global_parameters, args):
                 if args['optimizer'] == "sgd":
                     lr_scheduler.step()
                 
-            model_ls.append(model)
+            model_ls.append(copy.deepcopy(model))
             prob = np.ones(len(model_ls))/len(model_ls)
     
     eta_best = 1
