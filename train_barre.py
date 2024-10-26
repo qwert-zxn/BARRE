@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -28,13 +29,12 @@ def add_normal_noise(inputs, delta_range_c = 5):
     noisy_inputs = torch.clamp(inputs + noise, 0, 255)# 加噪声并限制在 [0, 255] 范围内
     return noisy_inputs
 
-def train(model, lr_scheduler, optimizer, trainloader,args):
+def train(model, lr_scheduler, optimizer, trainloader, args):
     #pbar = tqdm(trainloader)
     pbar = trainloader
     #pbar.set_description("Train:{:3d} epoch lr {:.1e}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
-        #adv_inp = apgd_attack(model_ls, inputs, targets, prob, 8 / 255.0, 2 / 255.0, 10, other_weight=args.other_weight, num_classes=num_classes, normalize=normalize)
         adv_inp = add_normal_noise(inputs)
         optimizer.zero_grad()
         model.train()
@@ -42,11 +42,6 @@ def train(model, lr_scheduler, optimizer, trainloader,args):
         loss = F.cross_entropy(pred, targets, reduction="none").mean()
         loss.backward()
         optimizer.step()
-        # pbar_dic = OrderedDict()
-        # pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * adv_correct / total)
-        # pbar_dic['adv loss'] = '{:.3f}'.format(train_adv_loss / (batch_idx + 1))
-        # pbar_dic['otheradv loss'] = '{:.3f}'.format(train_other_adv_loss / (batch_idx + 1))
-        # pbar.set_postfix(pbar_dic)
 
 
 def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
@@ -54,22 +49,17 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
     M = len(prob)
     err = np.zeros(M)
     n = 0
-    #pbar = tqdm(osploader)
-    curr_lr = osp_lr_init/(1+epoch)#可能要删
-    #pbar.set_description("OSP:{:3d} epoch lr {:.4f}".format(epoch, curr_lr))
     for batch_idx, (inputs, targets) in enumerate(osploader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        #adv_inp = arc_attack(model_ls, inputs, targets, prob, 8 / 255.0, 8 / 255.0, 10,  num_classes=num_classes, normalize=normalize, g=2)
         adv_inp = add_normal_noise(inputs)
         for m in range(M):
             model_ls[m].eval()  # 确保每个模型都在评估模式
             t_m = model_ls[m](adv_inp)
-            err[m]+= (t_m.max(1)[1] != targets).sum().item()
+            err[m] += (t_m.max(1)[1] != targets).sum().item()
 
         n += targets.size(0)
         pbar_dic = OrderedDict()
-        pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * (1-sum(err*prob)/n))
-        #pbar.set_postfix(pbar_dic)
+        pbar_dic['Adv Acc'] = '{:2.2f}'.format(100. * (1 - sum(err * prob) / n))
     grad = err/n
     return grad
 
@@ -103,10 +93,9 @@ def localUpdateBARRE(train_ds, Net, global_parameters, args):
 
     model_ls = []
     prob=[]
-    model = Net
+    model = copy.deepcopy(Net)
     model.load_state_dict(global_parameters)  # 将 global_parameters 中的模型参数加载到模型中
     for iteration in range(args['M']):
-        print('alpha = ',prob)
 
         if iteration <= args['resume_iter']:
             print('需要恢复模型状态')
@@ -136,12 +125,11 @@ def localUpdateBARRE(train_ds, Net, global_parameters, args):
     for t in range(args['osp_epochs']):
         osp_lr = 0.3
         g_t = osp_iter(t,model_ls, prob,osp_lr_init,osploader) #sub-gradient of eta(alpha_t)
-        eta_t = sum(g_t*prob) #eta(alpha_t)
+        eta_t = sum(g_t * prob) #eta(alpha_t)
         if eta_t <= eta_best:
             t_best = t
             prob_best = np.copy(prob)
             eta_best = eta_t
-        #print("best acc = {:2.2f} @ alpha_best = ".format(100.*(1-eta_best)) + arr_to_str(prob_best))
         prob = proj_onto_simplex(prob - osp_lr * g_t)
     print('==> End OSP routine, final alpha=' + arr_to_str(prob_best))
     prob = np.copy(prob_best)                    

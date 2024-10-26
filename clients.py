@@ -12,42 +12,6 @@ class client(object):
         self.train_dl = None
         self.local_parameters = None
 
-    # def localUpdate(self, localEpoch, localBatchSize, Net, lossFun, opti, global_parameters):
-    #     '''
-    #         param: localEpoch 当前Client的迭代次数
-    #         param: localBatchSize 当前Client的batchsize大小
-    #         param: Net Server共享的模型
-    #         param: LossFun 损失函数
-    #         param: opti 优化函数
-    #         param: global_parmeters 当前通讯中最全局参数
-    #         return: 返回当前Client基于自己的数据训练得到的新的模型参数
-    #     '''
-    #     # 加载当前通信中最新全局参数
-    #     # 传入网络模型，并加载global_parameters参数的
-    #     Net.load_state_dict(global_parameters, strict=True)
-    #     # 载入Client自有数据集
-    #     # 加载本地数据
-    #     self.train_dl = DataLoader(self.train_ds, batch_size=localBatchSize, shuffle=True)
-    #     # 设置迭代次数
-    #     for epoch in range(localEpoch):
-    #         for data, label in self.train_dl:
-    #             # 加载到GPU上
-    #             data, label = data.to(self.dev), label.to(self.dev)
-    #             # 模型上传入数据
-    #             preds = Net(data)
-    #             # 计算损失函数
-    #             '''
-    #                 这里应该记录一下模型得损失值 写入到一个txt文件中
-    #             '''
-    #             loss = lossFun(preds, label)
-    #             # 反向传播
-    #             loss.backward()
-    #             # 计算梯度，并更新梯度
-    #             opti.step()
-    #             # 将梯度归零，初始化梯度
-    #             opti.zero_grad()
-    #     # 返回当前Client基于自己的数据训练得到的新的模型参数
-    #     return Net.state_dict()
 
     def localUpdate(self, Net, global_parameters,args):
         return localUpdateBARRE(self.train_ds, Net, global_parameters,args)

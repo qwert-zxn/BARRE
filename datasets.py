@@ -43,21 +43,7 @@ cifar10_std = (0.2471, 0.2435, 0.2616) # equals np.std(train_set.train_data, axi
 #         normalize = lambda X: X
 #     return normalize
 
-def get_loaders(args, trainDataSet):#改成如果dataset直接是trainDataSet，怎么办
-    #trainDataSet的定义是trainDataSet=TensorDataset(torch.tensor(local_data), torch.tensor(local_label))，应该只有数据和标签
-    # if args.dataset == 'cifar10':
-    #     transform_train = transforms.Compose([
-    #         transforms.RandomCrop(32, padding=4),
-    #         transforms.RandomHorizontalFlip(),
-    #         transforms.ToTensor(),
-    #     ])
-    #     transform_test = transforms.Compose([transforms.ToTensor()])
-    #     trainset = torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=True, download=True, transform=transform_train)
-    #     testset = torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=False, download=True, transform=transform_test)#可能要让这个数据集有train=False的功能？
-    #     ospset =  torchvision.datasets.CIFAR10(root='/scratch/CIFAR10', train=True, download=True, transform=transform_train)
-    #     subset = list(range(0, args.osp_data_len))
-    #     ospset = torch.utils.data.Subset(ospset, subset)
-    
+def get_loaders(args, trainDataSet):
     
     subset = list(range(0, args['osp_data_len']))
     ospset = torch.utils.data.Subset(trainDataSet, subset)
