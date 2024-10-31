@@ -39,7 +39,7 @@ class ClientsGroup(object):
         self.test_data_loader = None
 
         self.dataSetBalanceAllocation()
-
+    
     def dataSetBalanceAllocation(self):
 
         # 得到已经被重新分配的数据

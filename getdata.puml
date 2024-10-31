@@ -1,0 +1,37 @@
+@startuml test
+start
+
+:初始化 GetDataSet 类;
+:输入数据集名称和是否 IID;
+
+if (数据集名称是 MNIST?) then (yes)
+    :加载和处理 MNIST 数据;
+    :加载训练和测试图像;
+    if (是否 IID?) then (yes)
+        :随机打乱数据;
+    else (no)
+        :按标签排序并分组;
+    endif
+    :数据归一化和重塑;
+else (no)
+    :加载和处理 CIFAR-10 数据;
+    :应用图像转换;
+    :加载训练和测试数据集;
+    if (是否 IID?) then (yes)
+        :随机打乱数据;
+    else (no)
+        :按标签排序;
+    endif
+endif
+
+:提取和处理图像及标签;
+:定义 extract_images 函数;
+:定义 extract_labels 函数;
+
+:主程序;
+:创建 GetDataSet 实例;
+:验证数据类型;
+:打印数据集的形状;
+
+stop
+@enduml

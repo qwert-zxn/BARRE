@@ -146,11 +146,20 @@ class GetDataSet(object):
 
     # 加载cifar10 的数据
     def load_data(self, isIID):
-        train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
-        test_transform = transforms.Compose([transforms.ToTensor()])
-        train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=False,
+        train_transform = transforms.Compose([
+            transforms.ToTensor()
+            , transforms.RandomCrop(32, padding=4)  # 先四周填充0，在吧图像随机裁剪成32*32
+            , transforms.RandomHorizontalFlip(p=0.5)  # 随机水平翻转 选择一个概率概率
+            , transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  # 均值，标准差
+        ])
+        test_transform = transforms.Compose([
+            transforms.ToTensor()
+            , transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+        train_set = torchvision.datasets.CIFAR10(root='./data/cifar-10-batches-py', train=True, download=True,
                                                  transform=train_transform)
-        test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=test_transform)
+        test_set = torchvision.datasets.CIFAR10(root='./data/cifar-10-batches-py', train=False, download=True, transform=test_transform)
         train_data = train_set.data  # (50000, 32, 32, 3)
         train_labels = train_set.targets
         train_labels = np.array(train_labels)  # 将标签转化为
