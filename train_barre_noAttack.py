@@ -14,7 +14,7 @@ from collections import OrderedDict
 # from attack import arc_attack, apgd_attack
 from utils import seed_torch, arr_to_str, proj_onto_simplex
 from datasets import get_loaders
-from attack import arc_attack, apgd_attack
+
 
 def add_path(path):
     if path not in sys.path:
@@ -30,34 +30,16 @@ def add_normal_noise(inputs, delta_range_c = 0.3):
     return noisy_inputs
 
 def train(model, lr_scheduler, optimizer, trainloader, args):
-    train_adv_loss = 0.
-    train_other_adv_loss = 0.
-    adv_correct = 0
-    total = 0
     pbar = trainloader
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.cuda(), targets.cuda()
-        adv_inp = apgd_attack(model, inputs, targets, 0.3, 2 / 255.0, 10, other_weight=0.1, num_classes=10)
+        adv_inp = add_normal_noise(inputs)
         optimizer.zero_grad()
         model.train()
         pred = model(adv_inp)
-        adv_loss = F.cross_entropy(pred, targets, reduction="none").mean()
-        _, adv_predicted = pred.detach().max(1)
-
-        other_pred = -model(adv_inp)
-        other_advloss = - F.log_softmax(other_pred, dim=1) * (1 - F.one_hot(targets, num_classes=10))
-        other_advloss = other_advloss.sum() / ((10 - 1) * len(targets))
-
-        total_advloss = adv_loss + 0.1 * other_advloss
-
-        total_advloss.backward()
-        total += targets.size(0)
-        adv_correct += adv_predicted.eq(targets).sum().item()
-
+        loss = F.cross_entropy(pred, targets, reduction="none").mean()
+        loss.backward()
         optimizer.step()
-
-        train_adv_loss += adv_loss.item()
-        train_other_adv_loss += other_advloss.item()
 
 
 def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
@@ -67,7 +49,7 @@ def osp_iter(epoch, model_ls, prob, osp_lr_init,osploader):
     n = 0
     for batch_idx, (inputs, targets) in enumerate(osploader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        adv_inp = arc_attack(model_ls, inputs, targets, prob, 0.3, 8 / 255.0, 10,  num_classes=10, g=2)
+        adv_inp = add_normal_noise(inputs)
         for m in range(M):
             model_ls[m].eval()  # 确保每个模型都在评估模式
             t_m = model_ls[m](adv_inp)

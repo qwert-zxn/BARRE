@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 from getData import GetDataSet
-from train_barre import localUpdateBARRE
+from train_barre_noAttack import localUpdateBARRE
 
 class client(object):
     def __init__(self, trainDataSet, dev):
@@ -22,19 +22,19 @@ class client(object):
 class ClientsGroup(object):
 
     '''
-        param: dataSetName 数据集的名称
-        param: isIID 是否是IID
-        param: numOfClients 客户端的数量
-        param: dev 设备(GPU)
-        param: clients_set 客户端
+        param: dataSetName 
+        param: isIID 
+        param: numOfClients 
+        param: dev 
+        param: clients_set 
 
     '''
     def __init__(self, dataSetName, isIID, numOfClients, dev):
-        self.data_set_name = dataSetName
-        self.is_iid = isIID
-        self.num_of_clients = numOfClients
-        self.dev = dev
-        self.clients_set = {}
+        self.data_set_name = dataSetName #数据集的名称
+        self.is_iid = isIID #是否是IID
+        self.num_of_clients = numOfClients #客户端的数量
+        self.dev = dev #设备(GPU)
+        self.clients_set = {} #客户端
 
         self.test_data_loader = None
 

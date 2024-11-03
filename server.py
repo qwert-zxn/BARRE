@@ -8,6 +8,15 @@ from torch import optim
 from Models import Mnist_2NN, Mnist_CNN
 from clients import ClientsGroup, client
 from model.WideResNet import WideResNet
+from attack import arc_attack, apgd_attack
+# 在导入其他模块之前添加
+import os
+import tempfile
+
+# 设置临时目录
+os.environ['TMPDIR'] = '/dev/shm/tmp'  # 或其他有写入权限的目录
+tempfile.tempdir = '/dev/shm/tmp'      # 显式设置tempfile使用的目录
+
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="FedAvg")
 parser.add_argument('-g', '--gpu', type=str, default='0', help='gpu id to use(e.g. 0,1,2,3)')
@@ -214,18 +223,24 @@ if __name__=="__main__":
         #  加载Server在最后得到的模型参数
         net.load_state_dict(global_parameters, strict=True)
         sum_accu = 0
+        adv_sum_accu=0
         num = 0
         # 载入测试集
         for data, label in testDataLoader:
             data, label = data.to(dev), label.to(dev)
             preds = net(data)
+            adv_inp=adv_inp = apgd_attack(net, data, label, 0.3, 2 / 255.0, 10, other_weight=0.1, num_classes=10)
+            adv_preds=net(adv_inp)
             preds = torch.argmax(preds, dim=1)
             sum_accu += (preds == label).float().mean()
+            adv_preds = torch.argmax(adv_preds, dim=1)
+            adv_sum_accu += (adv_preds == label).float().mean()
             num += 1
         print("\n"+'accuracy: {}'.format(sum_accu / num))
-
-        test_txt.write("communicate round "+str(i+1)+"  ")
+        print("\n"+'adv_accuracy: {}'.format(adv_sum_accu / num))
+        #test_txt.write("communicate round "+str(i+1)+"  ")
         test_txt.write('accuracy: '+str(float(sum_accu / num))+"\n")
+        test_txt.write('adv_accuracy: '+str(float(adv_sum_accu / num))+"\n")
         #test_txt.close()
 
         if (i + 1) % args['save_freq'] == 0:
